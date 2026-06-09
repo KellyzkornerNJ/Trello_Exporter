@@ -21,5 +21,5 @@ TrelloPowerUp.initialize({
   }
 }, {
   appName:  'Board Exporter',
-  appKey:   '876deed3f7022ebdfb807a2a2c089225' 
+  appKey:   '03104a8be649e2d0bec31e550682ff69' 
 });
