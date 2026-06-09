@@ -81,7 +81,7 @@ function fetchCardDetails(cards) {
   return Promise.all(cards.map(function(card) {
     return t.getRestApi().getToken()
       .then(function(token) {
-        var key = 876deed3f7022ebdfb807a2a2c089225; // same key as powerup.js
+        var key = '876deed3f7022ebdfb807a2a2c089225'
         var url = 'https://api.trello.com/1/cards/' + card.id
           + '?attachments=true&attachment_fields=name,url,mimeType,bytes'
           + '&fields=name,desc,idList,labels,due,cover,url'
