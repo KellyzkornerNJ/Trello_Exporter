@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print / Save PDF</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#172b4d;background:#fff}
+
+#no-print{
+  background:#0052cc;color:#fff;padding:10px 16px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+#no-print h2{flex:1;font-size:14px}
+button{
+  padding:7px 16px;border:none;border-radius:4px;
+  font-size:13px;font-weight:600;cursor:pointer;
+}
+#btn-print{background:#fff;color:#0052cc}
+#btn-close{background:rgba(255,255,255,.2);color:#fff}
+
+.scope-bar{
+  padding:8px 16px;background:#f4f5f7;border-bottom:1px solid #dfe1e6;
+  font-size:11px;color:#6b778c;
+}
+
+.board{padding:16px;display:flex;flex-direction:column;gap:20px}
+
+.list-block{}
+.list-title{
+  font-size:16px;font-weight:700;color:#172b4d;
+  border-bottom:2px solid #0052cc;padding-bottom:4px;margin-bottom:10px;
+}
+
+.card{
+  background:#fff;border:1px solid #dfe1e6;border-radius:6px;
+  padding:12px 14px;margin-bottom:10px;page-break-inside:avoid;
+}
+.card-title{font-size:14px;font-weight:600;margin-bottom:6px}
+
+.labels{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.lbl{
+  font-size:10px;padding:2px 8px;border-radius:10px;
+  color:#fff;font-weight:700;
+}
+
+.meta{display:flex;gap:14px;font-size:11px;color:#6b778c;margin-bottom:8px;flex-wrap:wrap}
+
+.cover{
+  max-width:100%;max-height:220px;object-fit:cover;
+  border-radius:4px;margin-bottom:8px;display:block;
+}
+
+.desc{
+  white-space:pre-wrap;font-size:12px;color:#344563;
+  margin-bottom:8px;padding:8px;background:#f4f5f7;border-radius:4px;
+}
+
+.attach-title{font-size:11px;font-weight:700;text-transform:uppercase;
+  color:#6b778c;letter-spacing:.05em;margin-bottom:4px}
+.attach-list{list-style:none;padding:0}
+.attach-list li{
+  font-size:12px;padding:3px 0;border-bottom:1px solid #f4f5f7;
+  display:flex;align-items:baseline;gap:6px;
+}
+.attach-list li:last-child{border-bottom:none}
+.attach-name{font-weight:500}
+.attach-url{color:#0052cc;word-break:break-all;font-size:11px}
+
+.card-url{font-size:10px;color:#6b778c;margin-top:8px}
+
+#loading{padding:40px;text-align:center;color:#6b778c;font-size:14px}
+#error  {padding:40px;text-align:center;color:#bf2600;font-size:14px;display:none}
+
+@media print{
+  #no-print,.scope-bar{display:none!important}
+  body{background:#fff}
+  .card{box-shadow:none;border-color:#ccc}
+  .attach-url{color:#333}
+}
+</style>
+</head>
+<body>
+
+<div id="no-print">
+  <h2>📄 Ready to Print / Save as PDF</h2>
+  <button id="btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
+  <button id="btn-close" onclick="window.close()">✕ Close</button>
+</div>
+
+<div id="loading">Loading card data…</div>
+<div id="error">Could not load card data. Please try again.</div>
+<div id="board" class="board" style="display:none"></div>
+
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var key    = params.get('key');
+  if (!key) { showError('Missing data key.'); return; }
+
+  var raw = sessionStorage.getItem(key);
+  if (!raw) { showError('Session data expired or not found. Please export again.'); return; }
+
+  sessionStorage.removeItem(key); // one-time use
+
+  var data;
+  try { data = JSON.parse(raw); } catch(e) { showError('Corrupt data: ' + e.message); return; }
+
+  render(data.cards, data.lists);
+
+  function render(cards, lists) {
+    var board = document.getElementById('board');
+    document.getElementById('loading').style.display = 'none';
+    board.style.display = '';
+
+    // Group by list, preserving list order
+    var byList = {};
+    lists.forEach(function(l) { byList[l.id] = { name: l.name, cards: [] }; });
+    cards.forEach(function(c) { if (byList[c.idList]) byList[c.idList].cards.push(c); });
+
+    lists.forEach(function(l) {
+      var group = byList[l.id];
+      if (!group || !group.cards.length) return;
+
+      var section = document.createElement('div');
+      section.className = 'list-block';
+
+      var title = document.createElement('div');
+      title.className = 'list-title';
+      title.textContent = l.name + ' (' + group.cards.length + ')';
+      section.appendChild(title);
+
+      group.cards.forEach(function(c) {
+        section.appendChild(buildCard(c));
+      });
+
+      board.appendChild(section);
+    });
+  }
+
+  function buildCard(c) {
+    var card = document.createElement('div');
+    card.className = 'card';
+
+    // Cover image
+    if (c.cover && c.cover.idAttachment) {
+      var att = (c.attachments || []).find(function(a) { return a.id === c.cover.idAttachment; });
+      if (att && att.url && /\.(jpe?g|png|gif|webp|svg)(\?|$)/i.test(att.url)) {
+        var img = document.createElement('img');
+        img.className = 'cover';
+        img.src = att.url;
+        img.alt = att.name;
+        card.appendChild(img);
+      }
+    }
+
+    // Title
+    var titleEl = document.createElement('div');
+    titleEl.className = 'card-title';
+    titleEl.textContent = c.name;
+    card.appendChild(titleEl);
+
+    // Labels
+    if (c.labels && c.labels.length) {
+      var labelsEl = document.createElement('div');
+      labelsEl.className = 'labels';
+      c.labels.forEach(function(lb) {
+        var sp = document.createElement('span');
+        sp.className = 'lbl';
+        sp.style.background = labelColor(lb.color);
+        sp.textContent = lb.name || lb.color;
+        labelsEl.appendChild(sp);
+      });
+      card.appendChild(labelsEl);
+    }
+
+    // Meta (due date, attachment count)
+    var metaEl = document.createElement('div');
+    metaEl.className = 'meta';
+    if (c.due) {
+      metaEl.innerHTML += '<span>📅 Due: ' + new Date(c.due).toLocaleDateString() + '</span>';
+    }
+    if (c.attachments && c.attachments.length) {
+      metaEl.innerHTML += '<span>📎 ' + c.attachments.length + ' attachment' + (c.attachments.length > 1 ? 's' : '') + '</span>';
+    }
+    if (metaEl.children.length) card.appendChild(metaEl);
+
+    // Description
+    if (c.desc && c.desc.trim()) {
+      var descEl = document.createElement('div');
+      descEl.className = 'desc';
+      descEl.textContent = c.desc;
+      card.appendChild(descEl);
+    }
+
+    // Attachments
+    if (c.attachments && c.attachments.length) {
+      var at = document.createElement('div');
+      at.className = 'attach-title';
+      at.textContent = 'Attachments';
+      card.appendChild(at);
+
+      var ul = document.createElement('ul');
+      ul.className = 'attach-list';
+      c.attachments.forEach(function(a) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span class="attach-name">📎 ' + esc(a.name) + '</span>'
+          + '<span class="attach-url">' + esc(a.url) + '</span>';
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+    }
+
+    // Card URL
+    if (c.url) {
+      var urlEl = document.createElement('div');
+      urlEl.className = 'card-url';
+      urlEl.textContent = c.url;
+      card.appendChild(urlEl);
+    }
+
+    return card;
+  }
+
+  function showError(msg) {
+    document.getElementById('loading').style.display = 'none';
+    var el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = '';
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function labelColor(c) {
+    var map={green:'#61bd4f',yellow:'#f2d600',orange:'#ff9f1a',red:'#eb5a46',
+             purple:'#c377e0',blue:'#0079bf',sky:'#00c2e0',lime:'#51e898',
+             pink:'#ff78cb',black:'#344563'};
+    return map[c] || '#6b778c';
+  }
+
+})();
+</script>
+</body>
+</html>

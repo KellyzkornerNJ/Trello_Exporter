@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Export</title>
+  <link rel="stylesheet" href="css/popup.css">
+</head>
+<body>
+
+<div class="container">
+  <h3>Export Scope</h3>
+
+  <div class="scope-row">
+    <label><input type="radio" name="scope" value="board" checked> Entire Board</label>
+    <label><input type="radio" name="scope" value="lists"> Select Lists…</label>
+  </div>
+
+  <div id="list-picker" class="list-picker hidden">
+    <p class="hint">Loading lists…</p>
+  </div>
+
+  <div class="filter-row">
+    <label>
+      <input type="checkbox" id="only-with-attachments">
+      Cards with attachments only
+    </label>
+  </div>
+
+  <hr>
+
+  <h3>Export Format</h3>
+  <div class="btn-group">
+    <button id="btn-pdf"  class="btn btn-pdf">📄 PDF</button>
+    <button id="btn-csv"  class="btn btn-csv">📊 CSV</button>
+    <button id="btn-html" class="btn btn-html">🌐 Offline HTML</button>
+  </div>
+
+  <div id="status" class="status hidden"></div>
+</div>
+
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<script src="js/popup.js"></script>
+</body>
+</html>
